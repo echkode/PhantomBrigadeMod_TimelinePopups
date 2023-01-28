@@ -1,0 +1,12 @@
+id: com.echkode.pbmods.timelinepopups
+ver: 1
+includesConfigOverrides: false
+includesConfigEdits: false
+includesLibraries: true
+includesTextures: false
+includesLocalizationEdits: false
+includesLocalizations: false
+gameVersionMin:
+gameVersionMax:
+name: Timeline Popups
+desc: Show popups for targeted unit and weapon info when hovering over attack action in timeline.
