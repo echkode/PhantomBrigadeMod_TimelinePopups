@@ -16,16 +16,24 @@ namespace EchKode.PBMods.TimelinePopups
 {
 	static class CIViewCombatTimeline
 	{
+		private sealed class DisplayChange
+		{
+			internal bool Change;
+			internal bool Hover;
+			internal bool Drag;
+		}
+
 		[System.Flags]
-		private enum Popup
+		private enum DisplayElement
 		{
 			None = 0,
 			Target = 1,
 			EquipmentInfo = 2,
+			Range = 4,
 		}
 
-		private static Popup visiblePopups;
-		private static Popup suppressedPopups;
+		private static DisplayElement visibleDisplayElements;
+		private static DisplayElement suppressedDisplayElements;
 		private static Dictionary<int, CIHelperTimelineAction> helpersActionsPlanned;
 
 		internal static void Initialize()
@@ -35,7 +43,7 @@ namespace EchKode.PBMods.TimelinePopups
 
 		internal static void ConfigureActionPlanned(CIHelperTimelineAction helper, int actionID)
 		{
-			if (ModLink.Settings.displayElements == ModLink.ModSettings.DisplayElement.None)
+			if (ModLink.Settings.hoverDisplayElements == ModLink.ModSettings.DisplayElement.None)
 			{
 				return;
 			}
@@ -98,11 +106,7 @@ namespace EchKode.PBMods.TimelinePopups
 
 		internal static void OnActionDrag(object callbackAsObject)
 		{
-			if (visiblePopups == Popup.None)
-			{
-				return;
-			}
-			if (ModLink.Settings.showPopupsOnDrag)
+			if (visibleDisplayElements == DisplayElement.None)
 			{
 				return;
 			}
@@ -127,30 +131,38 @@ namespace EchKode.PBMods.TimelinePopups
 				return;
 			}
 
-			suppressedPopups = visiblePopups;
-			HideTargetedUnit();
-			HideEquipmentInfo();
-			HideRange(action);
-		}
+			suppressedDisplayElements = DisplayElement.None;
 
-		internal static void OnActionDragEnd(object callbackAsObject)
-		{
-			if (suppressedPopups == Popup.None)
+			var (target, info, range) = GetDisplayChanges();
+			if (target.Change && target.Hover)
+			{
+				suppressedDisplayElements |= DisplayElement.Target;
+				HideTargetedUnit(ModLink.ModSettings.DisplayElement.None);
+			}
+			if (info.Change && info.Hover)
+			{
+				suppressedDisplayElements |= DisplayElement.EquipmentInfo;
+				HideEquipmentInfo(ModLink.ModSettings.DisplayElement.None);
+			}
+			if (range.Change && range.Hover)
+			{
+				suppressedDisplayElements |= DisplayElement.Range;
+				HideRange(action, ModLink.ModSettings.DisplayElement.None);
+			}
+
+			visibleDisplayElements = DisplayElement.None;
+
+			if (target.Change && target.Drag)
+			{
+				ShowTargetedUnit(action, ModLink.ModSettings.DisplayElement.None);
+			}
+
+			var infoShow = info.Change && info.Drag;
+			var rangeShow = range.Change && range.Drag;
+			if (!infoShow && !rangeShow)
 			{
 				return;
 			}
-			if (ModLink.Settings.showPopupsOnDrag)
-			{
-				return;
-			}
-
-			var action = IDUtility.GetActionEntity(((UICallback)callbackAsObject).argumentInt);
-			if (action == null)
-			{
-				return;
-			}
-
-			ShowTargetedUnit(action);
 
 			var (ok, combatEntity, partInUnit) = GetComponentsFromAction(action);
 			if (!ok)
@@ -158,10 +170,71 @@ namespace EchKode.PBMods.TimelinePopups
 				return;
 			}
 
-			ShowEquipmentInfo(partInUnit);
-			ShowRange(combatEntity, partInUnit);
+			if (infoShow)
+			{
+				ShowEquipmentInfo(partInUnit, ModLink.ModSettings.DisplayElement.None);
+			}
+			if (rangeShow)
+			{
+				ShowRange(combatEntity, partInUnit, ModLink.ModSettings.DisplayElement.None);
+			}
+		}
 
-			suppressedPopups = Popup.None;
+		internal static void OnActionDragEnd(object callbackAsObject)
+		{
+			if (suppressedDisplayElements == DisplayElement.None)
+			{
+				return;
+			}
+
+			suppressedDisplayElements = DisplayElement.None;
+
+			var action = IDUtility.GetActionEntity(((UICallback)callbackAsObject).argumentInt);
+			if (action == null)
+			{
+				return;
+			}
+
+			var (target, info, range) = GetDisplayChanges();
+			if (target.Change && target.Drag)
+			{
+				HideTargetedUnit(ModLink.ModSettings.DisplayElement.None);
+			}
+			if (info.Change && info.Drag)
+			{
+				HideEquipmentInfo(ModLink.ModSettings.DisplayElement.None);
+			}
+			if (range.Change && range.Drag)
+			{
+				HideRange(action, ModLink.ModSettings.DisplayElement.None);
+			}
+
+			if (target.Change && target.Hover)
+			{
+				ShowTargetedUnit(action, ModLink.ModSettings.DisplayElement.None);
+			}
+
+			var infoShow = info.Change && info.Hover;
+			var rangeShow = range.Change && range.Hover;
+			if (!infoShow && !rangeShow)
+			{
+				return;
+			}
+
+			var (ok, combatEntity, partInUnit) = GetComponentsFromAction(action);
+			if (!ok)
+			{
+				return;
+			}
+
+			if (infoShow)
+			{
+				ShowEquipmentInfo(partInUnit, ModLink.ModSettings.DisplayElement.None);
+			}
+			if (rangeShow)
+			{
+				ShowRange(combatEntity, partInUnit, ModLink.ModSettings.DisplayElement.None);
+			}
 		}
 
 		static void OnActionHoverStart(object arg)
@@ -273,10 +346,11 @@ namespace EchKode.PBMods.TimelinePopups
 			return part.tagCache.tags.Contains("type_defensive");
 		}
 
-		static void ShowTargetedUnit(ActionEntity action)
+		static void ShowTargetedUnit(
+			ActionEntity action,
+			ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.TargetPopup)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.TargetPopup)
-				!= ModLink.ModSettings.DisplayElement.TargetPopup)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
@@ -297,13 +371,14 @@ namespace EchKode.PBMods.TimelinePopups
 			}
 
 			CombatUITargeting.OnTimelineUI(targetedUnit.id.id);
-			visiblePopups |= Popup.Target;
+			visibleDisplayElements |= DisplayElement.Target;
 		}
 
-		static void ShowEquipmentInfo(EquipmentEntity part)
+		static void ShowEquipmentInfo(
+			EquipmentEntity part,
+			ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
-				!= ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
@@ -311,50 +386,52 @@ namespace EchKode.PBMods.TimelinePopups
 			CIViewBaseCustomizationInfo.ins.RemoveInventoryBinding();
 			CIViewBaseCustomizationInfo.ins.SetLocation(CIViewBaseCustomizationInfo.Location.CombatAction);
 			CIViewBaseCustomizationInfo.ins.OnPartRefresh(part.id.id);
-			visiblePopups |= Popup.EquipmentInfo;
+			visibleDisplayElements |= DisplayElement.EquipmentInfo;
 		}
 
-		static void ShowRange(CombatEntity combatEntity, EquipmentEntity partInUnit)
+		static void ShowRange(
+			CombatEntity combatEntity,
+			EquipmentEntity partInUnit,
+			ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.Range)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.Range)
-				!= ModLink.ModSettings.DisplayElement.Range)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
 
 			WorldUICombat.OnRangeEnd();
 			WorldUICombat.OnRangeDisplay(-1, 0, combatEntity.projectedPosition.v, partInUnit);
+			visibleDisplayElements |= DisplayElement.Range;
 		}
 
-		static void HideTargetedUnit()
+		static void HideTargetedUnit(ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.TargetPopup)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.TargetPopup)
-				!= ModLink.ModSettings.DisplayElement.TargetPopup)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
 
 			CombatUITargeting.OnTimelineUI(-99);
-			visiblePopups &= ~Popup.Target;
+			visibleDisplayElements &= ~DisplayElement.Target;
 		}
 
-		static void HideEquipmentInfo()
+		static void HideEquipmentInfo(ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
-				!= ModLink.ModSettings.DisplayElement.EquipmentInfoPopup)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
 
 			CIViewBaseCustomizationInfo.ins.UnpinEverything();
 			CIViewBaseCustomizationInfo.ins.TryExit(null);
-			visiblePopups &= ~Popup.EquipmentInfo;
+			visibleDisplayElements &= ~DisplayElement.EquipmentInfo;
 		}
 
-		static void HideRange(ActionEntity action)
+		static void HideRange(
+			ActionEntity action,
+			ModLink.ModSettings.DisplayElement checkElement = ModLink.ModSettings.DisplayElement.Range)
 		{
-			if ((ModLink.Settings.displayElements & ModLink.ModSettings.DisplayElement.Range)
-				!= ModLink.ModSettings.DisplayElement.Range)
+			if ((ModLink.Settings.hoverDisplayElements & checkElement) != checkElement)
 			{
 				return;
 			}
@@ -367,6 +444,57 @@ namespace EchKode.PBMods.TimelinePopups
 
 			WorldUICombat.OnRangeEnd();
 			ActionProjectionSystem.ForceNextUpdate();
+			visibleDisplayElements &= ~DisplayElement.Range;
+		}
+
+		static (DisplayChange Target, DisplayChange Hover, DisplayChange Range)
+			GetDisplayChanges()
+		{
+			var (targetHover, targetDrag) = IsDisplayElementEnabled(ModLink.ModSettings.DisplayElement.TargetPopup);
+			var (infoHover, infoDrag) = IsDisplayElementEnabled(ModLink.ModSettings.DisplayElement.EquipmentInfoPopup);
+			var (rangeHover, rangeDrag) = IsDisplayElementEnabled(ModLink.ModSettings.DisplayElement.Range);
+
+			var targetChange = targetHover ^ targetDrag;
+			var infoChange = infoHover ^ infoDrag;
+			var rangeChange = rangeHover ^ rangeDrag;
+
+			if (ModLink.Settings.enableLogging)
+			{
+				Debug.LogFormat(
+					"Mod {0} ({1}) display changes | target: {2} | equipment info: {3} | range: {4}",
+					ModLink.modIndex,
+					ModLink.modId,
+					targetChange,
+					infoChange,
+					rangeChange);
+			}
+
+			return (
+				new DisplayChange()
+				{
+					Change = targetChange,
+					Hover = targetHover,
+					Drag = targetDrag,
+				},
+				new DisplayChange()
+				{
+					Change = infoChange,
+					Hover = infoHover,
+					Drag = infoDrag,
+				},
+				new DisplayChange()
+				{
+					Change = rangeChange,
+					Hover = rangeHover,
+					Drag = rangeDrag,
+				});
+		}
+
+		static (bool Hover, bool Drag) IsDisplayElementEnabled(ModLink.ModSettings.DisplayElement element)
+		{
+			var hover = (ModLink.Settings.hoverDisplayElements & element) == element;
+			var drag = (ModLink.Settings.dragDisplayElements & element) == element;
+			return (hover, drag);
 		}
 
 		static (bool, CombatEntity, EquipmentEntity)

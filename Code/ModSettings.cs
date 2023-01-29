@@ -22,8 +22,8 @@ namespace EchKode.PBMods.TimelinePopups
 #pragma warning disable CS0649
 			public bool enableLogging;
 			public bool showPopupsForShields;
-			public bool showPopupsOnDrag;
-			public DisplayElement displayElements = DisplayElement.TargetPopup | DisplayElement.EquipmentInfoPopup;
+			public DisplayElement hoverDisplayElements = DisplayElement.TargetPopup | DisplayElement.EquipmentInfoPopup;
+			public DisplayElement dragDisplayElements = DisplayElement.Range;
 			public bool enableTargetPopupInSimulation;  // XXX experimental
 #pragma warning restore CS0649
 		}
@@ -51,7 +51,7 @@ namespace EchKode.PBMods.TimelinePopups
 					"Mod {0} ({1}) display elements: {2}",
 					modIndex,
 					modId,
-					Settings.displayElements);
+					Settings.hoverDisplayElements);
 			}
 		}
 	}

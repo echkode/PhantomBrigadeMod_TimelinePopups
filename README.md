@@ -16,20 +16,24 @@ There are some settings that can be changed to tweak how the mod works. The `set
 | ------------ | ---------- | ----------- |
 | enableLogging | bool | set to `true` to turn on diagnostic logging |
 | showPopupsForShields | bool | set to `true` to enable popups when hovering over a shield action |
-| showPopupsOnDrag | bool | set to `true` if you want the popups to stay visible while you drag an attack action in the timeline |
-| displayElements | enum | controls which popups are displayed; see below |
+| hoverDisplayElements | enum | controls which popups are displayed on hover; see below |
+| dragDisplayElements | enum | controls which popups are displayed on drag; see below |
 | enableTargetPopupInSimulation | bool | **experimental** show the targeted unit popup in the simulation phase |
 
-The `displayElements` setting is a set of enumerated values to control which popups are displayed on hover
+The `hoverDisplayElements` and `dragDisplayElements` settings are a set of enumerated values to control which popups are displayed the corresponding event.
 
 | Name | Description |
 | ---- | ----------- |
-| None | nothing is displayed on hover |
-| TargetPopup | show the targeted unit popup on hover |
-| EquipmentInfoPopup | show the equipment info popup on hover |
-| Range | show the range circle in the world on hover |
+| None | nothing is displayed |
+| TargetPopup | show the targeted unit popup |
+| EquipmentInfoPopup | show the equipment info popup |
+| Range | show the range circle in the world |
 
-The range circle is not shown by default. An example `settings.yaml` file is included in the repo with all settings on but the mod is meant to be used without a settings file.
+An example `settings.yaml` file is included in the repo with all settings on but the mod is meant to be used without a settings file.
+
+## Bonus Feature
+
+In addition to showing the targeted unit and equipment info popups on hover, I've added an extra capability of showing the range circle when dragging an attack action in the timeline. I've often found that the reason I'm dragging an attack is to time it so that the target unit reaches the optimal range at the right time. That's hard to get right without being able to see the range circle.
 
 ## Bonus Fixes
 

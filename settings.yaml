@@ -1,5 +1,5 @@
 enableLogging: true
 showPopupsForShields: true
-showPopupsOnDrag: true
-displayElements: TargetPopup, EquipmentInfoPopup, Range
+hoverDisplayElements: TargetPopup, EquipmentInfoPopup, Range
+dragDisplayElements: TargetPopup, EquipmentInfoPopup, Range
 enableTargetPopupInSimulation: true
