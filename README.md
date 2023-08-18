@@ -1,5 +1,7 @@
 # TimelinePopups
 
+**This mod is obsolete.** The game has been patched by the publisher so now it shows the weapon info popup. If you want the popup for the targeted unit, see my [TargetedUnitPopup mod](https://github.com/echkode/PhantomBrigadeMod_TargetedUnitPopup). If you want the range circle overlay when dragging an attack action, see my [mod for that](https://github.com/echkode/PhantomBrigadeMod_WeaponRangeCircleOverlay).
+
 A library mod for [Phantom Brigade (Alpha)](https://braceyourselfgames.com/phantom-brigade/) that brings back the targeted unit and equipment info popups that used to be displayed when you hovered over an attack action in the timeline.
 
 It is compatible with game patch **0.23.1-b5426**. That is an **EXPERIMENTAL** release. All library mods are fragile and susceptible to breakage whenever a new version is released.
